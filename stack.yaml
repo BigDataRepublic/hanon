@@ -1,0 +1,8 @@
+flags: {}
+extra-package-dbs: []
+packages:
+- '.'
+extra-deps:
+- higher-leveldb-0.4.0.0
+- random-extras-0.19
+resolver: lts-8.13
