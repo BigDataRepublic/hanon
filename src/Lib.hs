@@ -1,6 +1,6 @@
 module Lib
     ( scanFiles
-    , translateFiles
+    , mapFiles
     , listMapping
     ) where
 import Mapper
@@ -9,8 +9,8 @@ import Database.LevelDB.Higher
 import qualified Data.ByteString.UTF8 as B
 import qualified Data.ByteString.Char8 as BS
 import System.IO
-
-
+import Data.Maybe (fromJust)
+import qualified Data.Text as T
 
 -- |Show all mappings available in the database
 listMapping :: LevelDB ()
@@ -20,8 +20,6 @@ listMapping = do
         scanMap = \(key, value) -> BS.intercalate (B.fromString ":") [key, value]
     }
     liftIO $ mapM_ BS.putStrLn linesMeantForOutput
-
-
 
 
 --Pattern match all keys from a line
@@ -40,15 +38,24 @@ readNextKeys fh = do
 runInputPath :: InputPath -> String -> LevelDB ()
 runInputPath (highlighter, mapper) line = do
     let keys = highlighter line
-    mappedKeys <- mapM mapper keys
+    mappedKeys <- liftIO $ mapM mapper keys
     writeMapping (zip keys mappedKeys)
 
 runAllInputPaths :: String -> LevelDB()
-runAllInputPaths = mapM_ runInputPath
+runAllInputPaths line = mapM_ (\path -> runInputPath path line) inputPaths
 
 
 writeMapping :: [(String, String)] -> LevelDB ()
 writeMapping = mapM_ (\(k, v) -> put (B.fromString k) (B.fromString v))
+
+-- readKey :: String -> LevelDB (String, String)
+
+readMappinng :: [String] -> LevelDB [(String, String)]
+readMappinng keys = mapM (\k -> do
+    v <- get (B.fromString k)
+    return (k, B.toString $ fromJust v) --The key must exists, or scanning failed and we could just crash here
+    ) keys
+
 
 mapMKeysFromFile :: ([String] -> LevelDB ()) -> Handle -> LevelDB ()
 mapMKeysFromFile handler handle = do
@@ -62,11 +69,27 @@ mapMKeysFromFile handler handle = do
 
 runOnLinesFromHandle :: (String -> LevelDB ()) -> Handle -> LevelDB ()
 runOnLinesFromHandle handler handle = do
-    isoef <- hIsEOF fh
+    isoef <- liftIO $ hIsEOF handle
     if isoef
         then return ()
-        else do line <- hGetLine fh
-                return $ handler line
+        else do line <- liftIO $ hGetLine handle
+                handler line
+                runOnLinesFromHandle handler handle
+
+applyMapping :: (String, String) -> String -> String
+applyMapping (a, b) line = T.unpack $ T.replace (T.pack a) (T.pack b) (T.pack line)
+
+mapLinesFromTo :: Highlighter -> Handle -> Handle -> LevelDB ()
+mapLinesFromTo highlight ifh ofh = do
+    isoef <- liftIO $ hIsEOF ifh
+    if isoef
+        then return ()
+        else do line <- liftIO $ hGetLine ifh
+                let keys = highlight line
+                mapping <- readMappinng keys
+                let mappedLine = foldr applyMapping line mapping
+                liftIO $ hPutStrLn ofh mappedLine
+                mapLinesFromTo highlight ifh ofh
 
 -- |Open each of the files and create translations for each candidate
 scanFiles :: [FilePath] -> LevelDB ()
@@ -76,9 +99,22 @@ scanFile :: FilePath -> LevelDB ()
 scanFile file = do
     fh <- liftIO $ openFile file ReadMode
     runOnLinesFromHandle runAllInputPaths fh
-    mapMKeysFromFile generateMappingKeys fh
     liftIO $ hClose fh
 
 
+combinedHighlighter :: Highlighter
+combinedHighlighter line = concatMap (\h -> h line) highlighters
+
+
+mapFile :: FilePath -> LevelDB ()
+mapFile inputPath = do
+    let outputPath = inputPath ++ ".anon"
+    ifh <- liftIO $ openFile inputPath ReadMode
+    ofh <- liftIO $ openFile outputPath WriteMode
+    mapLinesFromTo combinedHighlighter ifh ofh
+    liftIO $ hClose ifh
+    liftIO $ hClose ofh
+
+
 mapFiles :: [FilePath] -> LevelDB ()
-mapFiles _ = return ()
+mapFiles = mapM_ mapFile

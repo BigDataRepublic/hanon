@@ -7,3 +7,4 @@ stack exec hanon-exe -- --scan hello.txt
 
 stack exec hanon-exe -- --list
 
+stack exec hanon-exe -- --map hello.txt

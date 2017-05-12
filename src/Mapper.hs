@@ -1,5 +1,6 @@
 module Mapper
     ( InputPath
+    , Highlighter
     , inputPaths
     , highlighters
     ) where
