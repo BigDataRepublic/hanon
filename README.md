@@ -15,7 +15,7 @@ Apply the mapping by using `--map`
 Adding mappers
 ----------
 
-Open the Mapper.hs file 
+Open the Mapper.hs file
 
  - Create a highlighter
  - Create a MappingGenerator
@@ -23,4 +23,7 @@ Open the Mapper.hs file
 
 Then `stack build` and run.
 
+Thanks
+------
 
+Thanks to people at the #haskell-beginners IRC channel for helping out. 

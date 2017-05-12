@@ -8,6 +8,8 @@ module Mapper
 import Data.Random (runRVar)
 import Data.Random.Source.DevRandom
 import Data.Random.Extras (choice)
+-- import Text.Regex.Base
+import Text.Regex.Posix
 
 someWords = words "stane furor polder uppsala atomised ruffler paten recco hipping calcaneus wampanoag eulogium brainier semipious legalised vinethene \
     \ unvirile mignonne untelic seasick umtali nontonic curler oeuvre ube boggart megiddo seconde juryless trounce tarn korona unfealty corrade \
@@ -25,17 +27,47 @@ type MappingGenerator = String -> IO String
 -- |Everything required to make a concrete mapping from a line
 type InputPath = (Highlighter, MappingGenerator)
 
-allWords :: Highlighter
-allWords = words
+-- |Highlight helper from regex and group index to key listing
+regexHighlighter :: String -> Int -> Highlighter
+regexHighlighter re groupIndex subject = map (!! groupIndex) (subject =~ re :: [[String]])
 
-getRandomWord :: MappingGenerator
-getRandomWord _ = runRVar (choice someWords) DevURandom
+
+-- |Highlight any x@x.x string
+emailHighlighter :: Highlighter
+emailHighlighter = regexHighlighter "\\S+@\\S+\\.\\S+" 0
+
+dutchPostalCodeHighlighter :: Highlighter
+dutchPostalCodeHighlighter = regexHighlighter "([0-9]{4} ?[A-Za-z]{2})" 1
+
+namesHighlighter :: Highlighter
+namesHighlighter = regexHighlighter "[A-Z][a-z]+" 0
+
+
+
+-- |Generate random@random.com
+randomEmail :: MappingGenerator
+randomEmail _ = do
+    a <- getRandomWord
+    b <- getRandomWord
+    return $ a ++ "@" ++ b ++ ".com"
+
+
+
+-- |MappingGenerator that always results in a constant value
+constant :: String -> MappingGenerator
+constant v _ = return v
+
+-- |Get a random word from a small dictionary
+getRandomWord :: IO String
+getRandomWord = runRVar (choice someWords) DevURandom
 
 
 -- |The input paths available
 inputPaths :: [InputPath]
 inputPaths = [
-    (allWords, \_ -> return "banaan")
+    (emailHighlighter, randomEmail)
+  , (dutchPostalCodeHighlighter, constant "1234 AA")
+  , (namesHighlighter, constant "Willem")
     ]
 
 -- |The highlighters of all input paths
