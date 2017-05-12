@@ -99,6 +99,7 @@ scanFiles = mapM_ scanFile
 
 scanFile :: FilePath -> LevelDB ()
 scanFile file = do
+    liftIO $ putStrLn $ "Scanning " ++ file
     fh <- liftIO $ openFile file ReadMode
     runOnLinesFromHandle runAllInputPaths fh
     liftIO $ hClose fh
@@ -110,6 +111,7 @@ combinedHighlighter line = concatMap (\h -> h line) highlighters
 
 mapFile :: FilePath -> LevelDB ()
 mapFile inputPath = do
+    liftIO $ putStrLn $ "Mapping " ++ inputPath
     let outputPath = inputPath ++ ".anon"
     ifh <- liftIO $ openFile inputPath ReadMode
     ofh <- liftIO $ openFile outputPath WriteMode
