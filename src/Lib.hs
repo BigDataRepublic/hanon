@@ -5,6 +5,7 @@ module Lib
     ) where
 import Mapper
 import Control.Monad.IO.Class       (liftIO)
+import Control.Monad (unless)
 import Database.LevelDB.Higher
 import qualified Data.ByteString.UTF8 as B
 import qualified Data.ByteString.Char8 as BS
@@ -44,7 +45,7 @@ runInputPath (highlighter, mapper) line = do
     writeMapping (zip keys mappedKeys)
 
 runAllInputPaths :: String -> LevelDB()
-runAllInputPaths line = mapM_ (\path -> runInputPath path line) inputPaths
+runAllInputPaths line = mapM_ (`runInputPath` line) inputPaths
 
 
 writeMapping :: [(String, String)] -> LevelDB ()
@@ -52,11 +53,12 @@ writeMapping = mapM_ (\(k, v) -> put (B.fromString k) (B.fromString v))
 
 -- readKey :: String -> LevelDB (String, String)
 
+-- |Read all given keys from the database and return their mappings
 readMapping :: [String] -> LevelDB [(String, String)]
-readMapping keys = mapM (\k -> do
+readMapping = mapM (\k -> do
     v <- get (B.fromString k)
     return (k, B.toString $ fromJust v) --The key must exists, or scanning failed and we could just crash here
-    ) keys
+    )
 
 
 mapMKeysFromFile :: ([String] -> LevelDB ()) -> Handle -> LevelDB ()
@@ -72,26 +74,24 @@ mapMKeysFromFile handler handle = do
 runOnLinesFromHandle :: (String -> LevelDB ()) -> Handle -> LevelDB ()
 runOnLinesFromHandle handler handle = do
     isoef <- liftIO $ hIsEOF handle
-    if isoef
-        then return ()
-        else do line <- liftIO $ hGetLine handle
-                handler line
-                runOnLinesFromHandle handler handle
+    unless isoef $ do
+            line <- liftIO $ hGetLine handle
+            handler line
+            runOnLinesFromHandle handler handle
 
 applyMapping :: (String, String) -> String -> String
 applyMapping (a, b) line = T.unpack $ T.replace (T.pack a) (T.pack b) (T.pack line)
 
 mapLinesFromTo :: Highlighter -> Handle -> Handle -> LevelDB ()
 mapLinesFromTo highlight ifh ofh = do
-    isoef <- liftIO $ hIsEOF ifh
-    if isoef
-        then return ()
-        else do line <- liftIO $ hGetLine ifh
-                let keys = highlight line
-                mapping <- readMapping keys
-                let mappedLine = foldr applyMapping line (sortBy (compare `on` (length . fst)) mapping)
-                liftIO $ hPutStrLn ofh mappedLine
-                mapLinesFromTo highlight ifh ofh
+    iseof <- liftIO $ hIsEOF ifh
+    unless iseof $ do
+            line <- liftIO $ hGetLine ifh
+            let keys = highlight line
+            mapping <- readMapping keys
+            let mappedLine = foldr applyMapping line (sortBy (compare `on` (length . fst)) mapping)
+            liftIO $ hPutStrLn ofh mappedLine
+            mapLinesFromTo highlight ifh ofh
 
 -- |Open each of the files and create translations for each candidate
 scanFiles :: [FilePath] -> LevelDB ()

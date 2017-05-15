@@ -9,7 +9,7 @@ import Data.Random (runRVar)
 import Data.Random.Source.DevRandom
 import Data.Random.Extras (choice)
 -- import Text.Regex.Base
-import Text.Regex.Posix
+import Text.Regex.PCRE
 
 someWords = words "stane furor polder uppsala atomised ruffler paten recco hipping calcaneus wampanoag eulogium brainier semipious legalised vinethene \
     \ unvirile mignonne untelic seasick umtali nontonic curler oeuvre ube boggart megiddo seconde juryless trounce tarn korona unfealty corrade \
