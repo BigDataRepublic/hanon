@@ -3,13 +3,14 @@ module Mapper
     , Highlighter
     , inputPaths
     , highlighters
+    , namesHighlighter
+    , phoneNumberHighlighter
     ) where
 
 import Data.Random (runRVar)
 import Data.Random.Source.DevRandom
 import Data.Random.Extras (choice)
--- import Text.Regex.Base
-import Text.Regex.PCRE
+import Text.Regex.TDFA
 
 someWords = words "stane furor polder uppsala atomised ruffler paten recco hipping calcaneus wampanoag eulogium brainier semipious legalised vinethene \
     \ unvirile mignonne untelic seasick umtali nontonic curler oeuvre ube boggart megiddo seconde juryless trounce tarn korona unfealty corrade \
@@ -31,19 +32,22 @@ type InputPath = (Highlighter, MappingGenerator)
 regexHighlighter :: String -> Int -> Highlighter
 regexHighlighter re groupIndex subject = map (!! groupIndex) (subject =~ re :: [[String]])
 
+-- http://gabebw.com/blog/2015/10/11/regular-expressions-in-haskell
+-- (BC.pack "hello there") =~ "e" :: AllTextMatches [] BC.ByteString
+-- bsResult :: AllTextMatches [] BC.ByteString
 
 -- |Highlight any x@x.x string
 emailHighlighter :: Highlighter
 emailHighlighter = regexHighlighter "\\S+@\\S+\\.\\S+" 0
 
 phoneNumberHighlighter :: Highlighter
-phoneNumberHighlighter = regexHighlighter "\\+?(9[976]\\d|8[987530]\\d|6[987]\\d|5[90]\\d|42\\d|3[875]\\d|2[98654321]\\d|9[8543210]|8[6421]|6[6543210]|5[87654321]|4[987654310]|3[9643210]|2[70]|7|1)\\d{1,14}" 0
+phoneNumberHighlighter = regexHighlighter "[+]?[0-9]{8,13}" 0
 
 dutchPostalCodeHighlighter :: Highlighter
-dutchPostalCodeHighlighter = regexHighlighter "[0-9]{4}\\s*[A-Za-z]{2}" 0
+dutchPostalCodeHighlighter = regexHighlighter "[0-9]{4} *[A-Za-z]{2}" 0
 
 namesHighlighter :: Highlighter
-namesHighlighter = regexHighlighter "[A-Z][a-z]+\\s+[A-Z][a-z]+" 0
+namesHighlighter = regexHighlighter "[A-Z][a-z]+ +[A-Z][a-z]+" 0
 
 
 
