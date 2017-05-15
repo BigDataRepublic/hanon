@@ -9,9 +9,12 @@ import Control.Monad (unless)
 import Database.LevelDB.Higher
 import qualified Data.ByteString.UTF8 as B
 import qualified Data.ByteString.Char8 as BS
-import System.IO
+import System.IO (openFile, hClose, Handle(..), hIsEOF, IOMode(..))
 import Data.Maybe (fromJust)
 import qualified Data.Text as T
+import Data.Text (Text (..))
+import Data.Text.IO (hGetLine, hPutStrLn)
+import Data.Text.Encoding (encodeUtf8, decodeUtf8)
 import Data.Function (on)
 import Data.List (sortBy)
 
@@ -26,10 +29,10 @@ listMapping = do
 
 
 --Pattern match all keys from a line
-keysFromLine :: String -> [String]
-keysFromLine = words
+keysFromLine :: Text -> [Text]
+keysFromLine = T.words
 
-readNextKeys :: Handle -> IO (Maybe [String])
+readNextKeys :: Handle -> IO (Maybe [Text])
 readNextKeys fh = do
     isoef <- hIsEOF fh
     if isoef
@@ -38,30 +41,30 @@ readNextKeys fh = do
                 return $ Just $ keysFromLine l
 
 
-runInputPath :: InputPath -> String -> LevelDB ()
+runInputPath :: InputPath -> Text -> LevelDB ()
 runInputPath (highlighter, mapper) line = do
     let keys = highlighter line
     mappedKeys <- liftIO $ mapM mapper keys
     writeMapping (zip keys mappedKeys)
 
-runAllInputPaths :: String -> LevelDB()
+runAllInputPaths :: Text -> LevelDB()
 runAllInputPaths line = mapM_ (`runInputPath` line) inputPaths
 
 
-writeMapping :: [(String, String)] -> LevelDB ()
-writeMapping = mapM_ (\(k, v) -> put (B.fromString k) (B.fromString v))
+writeMapping :: [(Text, Text)] -> LevelDB ()
+writeMapping = mapM_ (\(k, v) -> put (encodeUtf8 k) (encodeUtf8 v))
 
 -- readKey :: String -> LevelDB (String, String)
 
 -- |Read all given keys from the database and return their mappings
-readMapping :: [String] -> LevelDB [(String, String)]
+readMapping :: [Text] -> LevelDB [(Text, Text)]
 readMapping = mapM (\k -> do
-    v <- get (B.fromString k)
-    return (k, B.toString $ fromJust v) --The key must exists, or scanning failed and we could just crash here
+    v <- get (encodeUtf8 k)
+    return (k, decodeUtf8 $ fromJust v) --The key must exists, or scanning failed and we could just crash here
     )
 
 
-mapMKeysFromFile :: ([String] -> LevelDB ()) -> Handle -> LevelDB ()
+mapMKeysFromFile :: ([Text] -> LevelDB ()) -> Handle -> LevelDB ()
 mapMKeysFromFile handler handle = do
     next <- liftIO $ readNextKeys handle
     case next of
@@ -71,7 +74,7 @@ mapMKeysFromFile handler handle = do
             mapMKeysFromFile handler handle
 
 
-runOnLinesFromHandle :: (String -> LevelDB ()) -> Handle -> LevelDB ()
+runOnLinesFromHandle :: (Text -> LevelDB ()) -> Handle -> LevelDB ()
 runOnLinesFromHandle handler handle = do
     isoef <- liftIO $ hIsEOF handle
     unless isoef $ do
@@ -79,8 +82,9 @@ runOnLinesFromHandle handler handle = do
             handler line
             runOnLinesFromHandle handler handle
 
-applyMapping :: (String, String) -> String -> String
-applyMapping (a, b) line = T.unpack $ T.replace (T.pack a) (T.pack b) (T.pack line)
+-- |Apply mapping from a to be on subject
+applyMapping :: (Text, Text) -> Text -> Text
+applyMapping (a, b) subject = T.replace a b subject
 
 mapLinesFromTo :: Highlighter -> Handle -> Handle -> LevelDB ()
 mapLinesFromTo highlight ifh ofh = do
@@ -89,7 +93,7 @@ mapLinesFromTo highlight ifh ofh = do
             line <- liftIO $ hGetLine ifh
             let keys = highlight line
             mapping <- readMapping keys
-            let mappedLine = foldr applyMapping line (sortBy (compare `on` (length . fst)) mapping)
+            let mappedLine = foldr applyMapping line (sortBy (compare `on` (T.length . fst)) mapping)
             liftIO $ hPutStrLn ofh mappedLine
             mapLinesFromTo highlight ifh ofh
 
