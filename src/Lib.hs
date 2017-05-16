@@ -2,6 +2,7 @@ module Lib
     ( scanFiles
     , mapFiles
     , listMapping
+    , mapDirectFiles
     ) where
 import Mapper
 import Control.Monad.IO.Class       (liftIO)
@@ -48,8 +49,7 @@ runInputPath (highlighter, mapper) line = do
     writeMapping (zip keys mappedKeys)
 
 runAllInputPaths :: Text -> LevelDB()
-runAllInputPaths line = mapM_ (`runInputPath` line) inputPaths
-
+runAllInputPaths line = mapM_ (`runInputPath` line) defaultInputPaths
 
 writeMapping :: [(Text, Text)] -> LevelDB ()
 writeMapping = mapM_ (\(k, v) -> put (encodeUtf8 k) (encodeUtf8 v))
@@ -86,6 +86,9 @@ runOnLinesFromHandle handler handle = do
 applyMapping :: (Text, Text) -> Text -> Text
 applyMapping (a, b) subject = T.replace a b subject
 
+mapLine :: [(Text, Text)] -> Text -> Text
+mapLine mapping line = foldr applyMapping line (sortBy (compare `on` (T.length . fst)) mapping)
+
 mapLinesFromTo :: Highlighter -> Handle -> Handle -> LevelDB ()
 mapLinesFromTo highlight ifh ofh = do
     iseof <- liftIO $ hIsEOF ifh
@@ -93,7 +96,7 @@ mapLinesFromTo highlight ifh ofh = do
             line <- liftIO $ hGetLine ifh
             let keys = highlight line
             mapping <- readMapping keys
-            let mappedLine = foldr applyMapping line (sortBy (compare `on` (T.length . fst)) mapping)
+            let mappedLine = mapLine mapping line
             liftIO $ hPutStrLn ofh mappedLine
             mapLinesFromTo highlight ifh ofh
 
@@ -110,7 +113,7 @@ scanFile file = do
 
 
 combinedHighlighter :: Highlighter
-combinedHighlighter line = concatMap (\h -> h line) highlighters
+combinedHighlighter line = concatMap (\h -> h line) defaultHighlighters
 
 
 mapFile :: FilePath -> LevelDB ()
@@ -126,3 +129,40 @@ mapFile inputPath = do
 
 mapFiles :: [FilePath] -> LevelDB ()
 mapFiles = mapM_ mapFile
+
+applyInputPath :: InputPath -> Text -> IO [(Text, Text)]
+applyInputPath (highlighter, mapGenerator) line = do
+    let keys = highlighter line
+    mappedKeys <- mapM mapGenerator keys
+    return $ zip keys mappedKeys
+
+
+runInputPaths :: [InputPath] -> Text -> IO [(Text, Text)]
+runInputPaths paths line = do
+    mapped <- mapM (`applyInputPath` line) paths
+    return $ concat mapped
+
+
+mapDirectLinesFromTo :: [InputPath] -> Handle -> Handle -> IO ()
+mapDirectLinesFromTo inputPaths ifh ofh = do
+    iseof <- liftIO $ hIsEOF ifh
+    unless iseof $ do
+            line <- liftIO $ hGetLine ifh
+            mapping <- runInputPaths inputPaths line
+            let mappedLine = mapLine mapping line
+            liftIO $ hPutStrLn ofh mappedLine
+            mapDirectLinesFromTo inputPaths ifh ofh
+
+
+mapDirectFile :: FilePath -> IO ()
+mapDirectFile inputPath = do
+    liftIO $ putStrLn $ "Mapping " ++ inputPath
+    let outputPath = inputPath ++ ".anon"
+    ifh <- liftIO $ openFile inputPath ReadMode
+    ofh <- liftIO $ openFile outputPath WriteMode
+    mapDirectLinesFromTo defaultInputPaths ifh ofh
+    liftIO $ hClose ifh
+    liftIO $ hClose ofh
+
+mapDirectFiles :: [FilePath] -> IO ()
+mapDirectFiles = mapM_ mapDirectFile

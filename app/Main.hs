@@ -11,6 +11,7 @@ data MainOptions = MainOptions
     { optScan :: Bool
     , optList :: Bool
     , optMap :: Bool
+    , optDirect :: Bool
     }
 
 instance Options MainOptions where
@@ -21,10 +22,13 @@ instance Options MainOptions where
             "List all mappings"
         <*> simpleOption "map" False
             "Apply all possible mappings to the given files and output .anon versions"
+        <*> simpleOption "direct" False
+            "Apply all possible mappings to the given files and output .anon versions, without using LevelDB for storage"
 
 main :: IO ()
-main = runCommand $ \opts args ->
+main = runCommand $ \opts args -> do
     runCreateLevelDB "hanon_mapping" "hanon" $ do
         when (optScan opts) $ scanFiles args
         when (optList opts) listMapping
         when (optMap opts) $ mapFiles args
+    when (optDirect opts) $ mapDirectFiles args

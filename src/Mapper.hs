@@ -1,8 +1,8 @@
 module Mapper
     ( InputPath
     , Highlighter
-    , inputPaths
-    , highlighters
+    , defaultInputPaths
+    , defaultHighlighters
     , namesHighlighter
     , phoneNumberHighlighter
     ) where
@@ -73,8 +73,8 @@ getRandomWord = runRVar (choice someWords) DevURandom
 
 
 -- |The input paths available
-inputPaths :: [InputPath]
-inputPaths = [
+defaultInputPaths :: [InputPath]
+defaultInputPaths = [
     (emailHighlighter, randomEmail)
   , (dutchPostalCodeHighlighter, constant "1234AA")
   , (namesHighlighter, constant "Willem Wever")
@@ -82,5 +82,5 @@ inputPaths = [
     ]
 
 -- |The highlighters of all input paths
-highlighters :: [Highlighter]
-highlighters = map fst inputPaths
+defaultHighlighters :: [Highlighter]
+defaultHighlighters = map fst defaultInputPaths
