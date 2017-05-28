@@ -38,7 +38,7 @@ regexHighlighter re groupIndex subject = map (!! groupIndex) (subject =~ re :: [
 
 -- |Highlight any x@x.x string
 emailHighlighter :: Highlighter
-emailHighlighter = regexHighlighter "[^[:space:]]+@[^[:space:]]+\.[^[:space:]]+" 0
+emailHighlighter = regexHighlighter "[^[:space:]]+@[^[:space:]]+\\.[^[:space:]]+" 0
 
 phoneNumberHighlighter :: Highlighter
 phoneNumberHighlighter = regexHighlighter "[+]?[0-9]{8,13}" 0
