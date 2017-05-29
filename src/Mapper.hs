@@ -36,14 +36,11 @@ type InputPath = (Highlighter, MappingGenerator)
 regexHighlighter :: Regex -> Int -> Highlighter
 regexHighlighter re groupIndex subject = map (T.pack . (!! groupIndex)) (match re (T.unpack subject) :: [[String]])
 
--- http://gabebw.com/blog/2015/10/11/regular-expressions-in-haskell
--- (BC.pack "hello there") =~ "e" :: AllTextMatches [] BC.ByteString
--- bsResult :: AllTextMatches [] BC.ByteString
-
 -- |Highlight any x@x.x string
 emailHighlighter :: Highlighter
 emailHighlighter = regexHighlighter (makeRegex "\\S+@\\S+\\.\\S+") 0
 
+-- |Highlight anything that vagely resembles a phone number
 phoneNumberHighlighter :: Highlighter
 phoneNumberHighlighter = regexHighlighter (makeRegex "[+]?[0-9]{8,13}") 0
 
