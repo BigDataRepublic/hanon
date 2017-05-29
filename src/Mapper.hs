@@ -38,7 +38,7 @@ regexHighlighter re groupIndex subject = map (T.pack . (!! groupIndex)) (match r
 
 -- |Highlight any x@x.x string
 emailHighlighter :: Highlighter
-emailHighlighter = regexHighlighter (makeRegex "\\S+@\\S+\\.\\S+") 0
+emailHighlighter = regexHighlighter (makeRegex "[^[:space:]]+@[^[:space:]]+\\.[^[:space:]]+") 0
 
 -- |Highlight anything that vagely resembles a phone number
 phoneNumberHighlighter :: Highlighter
