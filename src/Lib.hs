@@ -5,8 +5,8 @@ module Lib
     , mapDirectFiles
     ) where
 import Mapper
-import Control.Monad.IO.Class       (liftIO)
-import Control.Monad (unless)
+import Control.Monad.IO.Class (liftIO)
+import Control.Monad (unless, join)
 import Database.LevelDB.Higher
 import qualified Data.ByteString.UTF8 as B
 import qualified Data.ByteString.Char8 as BS
@@ -23,10 +23,11 @@ import Data.List (sortBy)
 listMapping :: LevelDB ()
 listMapping = do
     liftIO $ putStrLn "Listing dictionary"
-    linesMeantForOutput <- scan (B.fromString "") queryList {
-        scanMap = \(key, value) -> BS.intercalate (B.fromString ":") [key, value]
+    join $ scan (B.fromString "") queryBegins {
+        scanInit = return ()
+      , scanMap = \(key, value) -> liftIO $ BS.putStrLn $ BS.intercalate (B.fromString ":") [key, value]
+      , scanFold = (>>)
     }
-    liftIO $ mapM_ BS.putStrLn linesMeantForOutput
 
 
 --Pattern match all keys from a line
@@ -84,7 +85,7 @@ runOnLinesFromHandle handler handle = do
 
 -- |Apply mapping from a to be on subject
 applyMapping :: (Text, Text) -> Text -> Text
-applyMapping (a, b) subject = T.replace a b subject
+applyMapping (a, b) = T.replace a b
 
 mapLine :: [(Text, Text)] -> Text -> Text
 mapLine mapping line = foldr applyMapping line (sortBy (compare `on` (T.length . fst)) mapping)
@@ -156,7 +157,7 @@ mapDirectLinesFromTo inputPaths ifh ofh = do
 
 mapDirectFile :: FilePath -> IO ()
 mapDirectFile inputPath = do
-    liftIO $ putStrLn $ "Mapping " ++ inputPath
+    liftIO $ putStrLn $ "Directly mapping " ++ inputPath
     let outputPath = inputPath ++ ".anon"
     ifh <- liftIO $ openFile inputPath ReadMode
     ofh <- liftIO $ openFile outputPath WriteMode
