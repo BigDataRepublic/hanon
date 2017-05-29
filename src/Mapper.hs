@@ -11,6 +11,7 @@ import Data.Random (runRVar)
 import Data.Random.Source.DevRandom
 import Data.Random.Extras (choice)
 import Text.Regex.TDFA
+import Text.Regex.TDFA.Common (Regex (..))
 import Data.Text (Text (..))
 import qualified Data.Text as T
 
@@ -32,8 +33,8 @@ type MappingGenerator = Text -> IO Text
 type InputPath = (Highlighter, MappingGenerator)
 
 -- |Highlight helper from regex and group index to key listing
-regexHighlighter :: String -> Int -> Highlighter
-regexHighlighter re groupIndex subject = map (T.pack . (!! groupIndex)) (T.unpack subject =~ re :: [[String]])
+regexHighlighter :: Regex -> Int -> Highlighter
+regexHighlighter re groupIndex subject = map (T.pack . (!! groupIndex)) (match re (T.unpack subject) :: [[String]])
 
 -- http://gabebw.com/blog/2015/10/11/regular-expressions-in-haskell
 -- (BC.pack "hello there") =~ "e" :: AllTextMatches [] BC.ByteString
@@ -41,16 +42,16 @@ regexHighlighter re groupIndex subject = map (T.pack . (!! groupIndex)) (T.unpac
 
 -- |Highlight any x@x.x string
 emailHighlighter :: Highlighter
-emailHighlighter = regexHighlighter "\\S+@\\S+\\.\\S+" 0
+emailHighlighter = regexHighlighter (makeRegex "\\S+@\\S+\\.\\S+") 0
 
 phoneNumberHighlighter :: Highlighter
-phoneNumberHighlighter = regexHighlighter "[+]?[0-9]{8,13}" 0
+phoneNumberHighlighter = regexHighlighter (makeRegex "[+]?[0-9]{8,13}") 0
 
 dutchPostalCodeHighlighter :: Highlighter
-dutchPostalCodeHighlighter = regexHighlighter "[0-9]{4} *[A-Za-z]{2}" 0
+dutchPostalCodeHighlighter = regexHighlighter (makeRegex "[0-9]{4} *[A-Za-z]{2}") 0
 
 namesHighlighter :: Highlighter
-namesHighlighter = regexHighlighter "[A-Z][a-z]+ +[A-Z][a-z]+" 0
+namesHighlighter = regexHighlighter (makeRegex "[A-Z][a-z]+ +[A-Z][a-z]+") 0
 
 
 
