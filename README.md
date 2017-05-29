@@ -2,6 +2,11 @@
 
 Simple anonimization software for text files (CSV for example)
 
+Goal and status
+---------------
+ - Created as a simple formalization of the Highlighter/Mapper concept
+ - Works but not production ready: no official support available, slow implementation.
+
 Usage
 ------
 
@@ -26,4 +31,4 @@ Then `stack build` and run.
 Thanks
 ------
 
-Thanks to people at the #haskell-beginners IRC channel for helping out. 
+Thanks to people at the #haskell-beginners IRC channel for helping out, and [pull requests from other people](./pulls?q=is%3Aclosed).
