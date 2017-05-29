@@ -15,6 +15,11 @@ main = hspec $ do
             phoneNumberHighlighter " 0123345678asd " `shouldBe` (["0123345678"] :: [Text])
         it "can parse plus notation" $ do
             phoneNumberHighlighter "+31123345678asd" `shouldBe` (["+31123345678"] :: [Text])
+    describe "emailHighlighter" $ do
+        it "can parse hotmail addresses" $ do
+            emailHighlighter " abc@hotmail.com " `shouldBe` (["abc@hotmail.com"] :: [Text])
+        it "can parse minimal example" $ do
+            emailHighlighter "something a@b.c something else" `shouldBe` (["a@b.c"] :: [Text])
 
 
 --

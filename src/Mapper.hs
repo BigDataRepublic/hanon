@@ -5,6 +5,7 @@ module Mapper
     , defaultHighlighters
     , namesHighlighter
     , phoneNumberHighlighter
+    , emailHighlighter
     ) where
 
 import Data.Random (runRVar)
